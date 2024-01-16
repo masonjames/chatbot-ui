@@ -1,4 +1,5 @@
 import { ChatbotUIContext } from "@/context/context"
+import { updateChat } from "@/db/chats"
 import { deleteMessagesIncludingAndAfter } from "@/db/messages"
 import { Tables } from "@/supabase/types"
 import { ChatMessage, ChatPayload } from "@/types"
@@ -32,6 +33,7 @@ export const useChatHandler = () => {
     setSelectedChat,
     setChats,
     availableLocalModels,
+    availableOpenRouterModels,
     abortController,
     setAbortController,
     chatSettings,
@@ -101,9 +103,11 @@ export const useChatHandler = () => {
       const newAbortController = new AbortController()
       setAbortController(newAbortController)
 
-      const modelData = [...LLM_LIST, ...availableLocalModels].find(
-        llm => llm.modelId === chatSettings?.model
-      )
+      const modelData = [
+        ...LLM_LIST,
+        ...availableLocalModels,
+        ...availableOpenRouterModels
+      ].find(llm => llm.modelId === chatSettings?.model)
 
       validateChatSettings(
         chatSettings,
@@ -199,6 +203,18 @@ export const useChatHandler = () => {
           setChats,
           setChatFiles
         )
+      } else {
+        const updatedChat = await updateChat(currentChat.id, {
+          updated_at: new Date().toISOString()
+        })
+
+        setChats(prevChats => {
+          const updatedChats = prevChats.map(prevChat =>
+            prevChat.id === updatedChat.id ? updatedChat : prevChat
+          )
+
+          return updatedChats
+        })
       }
 
       await handleCreateMessages(
